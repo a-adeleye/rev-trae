@@ -1,1 +1,175 @@
-rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isEntityOwner(entityId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/entityOwners/$(request.auth.uid + '_' + entityId));
+    }
+
+    function isRegularUser() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['regular', 'owner', 'admin'];
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'email', 'role', 'createdAt', 'updatedAt']) &&
+        data.displayName is string &&
+        data.email is string &&
+        data.role in ['regular', 'owner', 'admin'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidEntity(data) {
+      return data.keys().hasAll(['name', 'description', 'category', 'averageRating', 'totalReviews', 'createdAt', 'updatedAt']) &&
+        data.name is string &&
+        data.description is string &&
+        data.category in ['brand', 'product', 'movie', 'music'] &&
+        data.averageRating is number &&
+        data.averageRating >= 0 && data.averageRating <= 5 &&
+        data.totalReviews is number &&
+        data.totalReviews >= 0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['entityId', 'userId', 'userDisplayName', 'rating', 'title', 'content', 'wouldRecommend', 'verified', 'helpfulCount', 'createdAt', 'updatedAt']) &&
+        data.entityId is string &&
+        data.userId is string &&
+        data.userDisplayName is string &&
+        data.rating is number &&
+        data.rating >= 1 && data.rating <= 5 &&
+        data.title is string &&
+        data.content is string &&
+        data.wouldRecommend is bool &&
+        data.verified is bool &&
+        data.helpfulCount is number &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidReviewResponse(data) {
+      return data.keys().hasAll(['reviewId', 'ownerId', 'ownerDisplayName', 'content', 'createdAt', 'updatedAt']) &&
+        data.reviewId is string &&
+        data.ownerId is string &&
+        data.ownerDisplayName is string &&
+        data.content is string &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOwnershipClaim(data) {
+      return data.keys().hasAll(['entityId', 'entityName', 'userId', 'userDisplayName', 'userEmail', 'status', 'proof', 'createdAt', 'updatedAt']) &&
+        data.entityId is string &&
+        data.entityName is string &&
+        data.userId is string &&
+        data.userDisplayName is string &&
+        data.userEmail is string &&
+        data.status in ['pending', 'approved', 'rejected'] &&
+        data.proof is string &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFlag(data) {
+      return data.keys().hasAll(['reviewId', 'entityId', 'userId', 'userDisplayName', 'reason', 'description', 'status', 'createdAt']) &&
+        data.reviewId is string &&
+        data.entityId is string &&
+        data.userId is string &&
+        data.userDisplayName is string &&
+        data.reason in ['inappropriate', 'spam', 'fake', 'other'] &&
+        data.description is string &&
+        data.status in ['pending', 'resolved', 'dismissed'] &&
+        data.createdAt is timestamp;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+        request.resource.data.role == resource.data.role; // Cannot change role
+      allow delete: if isAdmin();
+    }
+
+    // Entities collection
+    match /entities/{entityId} {
+      allow read: if true; // Anyone can read entities
+      allow create: if isAdmin() && isValidEntity(request.resource.data);
+      allow update: if isAdmin() && isValidEntity(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if true; // Anyone can read reviews
+      allow create: if isRegularUser() && isValidReview(request.resource.data) &&
+        request.resource.data.userId == request.auth.uid; // User can only create their own reviews
+      allow update: if isOwner(resource.data.userId) && isValidReview(request.resource.data) &&
+        request.resource.data.userId == resource.data.userId && // Cannot change userId
+        request.resource.data.entityId == resource.data.entityId && // Cannot change entityId
+        request.resource.data.createdAt == resource.data.createdAt; // Cannot change createdAt
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // Review Responses collection
+    match /reviewResponses/{responseId} {
+      allow read: if true; // Anyone can read responses
+      allow create: if isEntityOwner(request.resource.data.reviewId.split('_')[1]) && 
+        isValidReviewResponse(request.resource.data) &&
+        request.resource.data.ownerId == request.auth.uid; // Only entity owners can respond
+      allow update: if isOwner(resource.data.ownerId) && isValidReviewResponse(request.resource.data) &&
+        request.resource.data.ownerId == resource.data.ownerId && // Cannot change ownerId
+        request.resource.data.reviewId == resource.data.reviewId; // Cannot change reviewId
+      allow delete: if isOwner(resource.data.ownerId) || isAdmin();
+    }
+
+    // Entity Owners collection
+    match /entityOwners/{ownerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Ownership Claims collection
+    match /ownershipClaims/{claimId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isRegularUser() && isValidOwnershipClaim(request.resource.data) &&
+        request.resource.data.userId == request.auth.uid; // User can only create their own claims
+      allow update: if isAdmin() && isValidOwnershipClaim(request.resource.data) &&
+        request.resource.data.userId == resource.data.userId && // Cannot change userId
+        request.resource.data.entityId == resource.data.entityId && // Cannot change entityId
+        request.resource.data.createdAt == resource.data.createdAt; // Cannot change createdAt
+      allow delete: if isAdmin();
+    }
+
+    // Flags collection
+    match /flags/{flagId} {
+      allow read: if isAdmin();
+      allow create: if isRegularUser() && isValidFlag(request.resource.data) &&
+        request.resource.data.userId == request.auth.uid; // User can only create their own flags
+      allow update: if isAdmin() && isValidFlag(request.resource.data) &&
+        request.resource.data.userId == resource.data.userId && // Cannot change userId
+        request.resource.data.reviewId == resource.data.reviewId && // Cannot change reviewId
+        request.resource.data.entityId == resource.data.entityId && // Cannot change entityId
+        request.resource.data.createdAt == resource.data.createdAt; // Cannot change createdAt
+      allow delete: if isAdmin();
+    }
+  }
