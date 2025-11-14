@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isEntityOwner(entityId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/entityOwners/$(request.auth.uid + '_' + entityId));
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && 
+        request.resource.data.keys().hasAll(['displayName', 'email', 'role', 'createdAt']) &&
+        request.resource.data.role in ['regular', 'owner', 'admin'];
+      allow update: if isOwner(userId) && 
+        !request.resource.data.diff(resource.data).hasAny(['role']) || // Users can't change their own role
+        isAdmin(); // Only admins can change roles
+      allow delete: if isAdmin();
+    }
+    
+    // Entities collection
+    match /entities/{entityId} {
+      allow read: if true; // Public read access
+      allow create: if isAuthenticated() && 
+        request.resource.data.keys().hasAll(['type', 'name', 'slug', 'createdBy', 'status', 'ratingCount', 'ratingSum', 'ratingAverage']) &&
+        request.resource.data.type in ['brand', 'product', 'movie', 'music'] &&
+        request.resource.data.status in ['active', 'pending_verification', 'hidden'] &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        (resource.data.createdBy == request.auth.uid && 
+         !request.resource.data.diff(resource.data).hasAny(['ratingCount', 'ratingSum', 'ratingAverage', 'lastReviewAt'])) || // Creators can update non-rating fields
+        isAdmin() // Admins can update anything
+      );
+      allow delete: if isAdmin();
+    }
+    
+    // Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'published' || isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.keys().hasAll(['entityId', 'userId', 'rating', 'body', 'status', 'likesCount', 'dislikesCount']) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+        request.resource.data.status == 'published' &&
+        request.resource.data.likesCount == 0 && request.resource.data.dislikesCount == 0;
+      allow update: if isAuthenticated() && (
+        (resource.data.userId == request.auth.uid && 
+         !request.resource.data.diff(resource.data).hasAny(['userId', 'entityId', 'likesCount', 'dislikesCount'])) || // Users can update their own reviews (except certain fields)
+        isAdmin() // Admins can update anything
+      );
+      allow delete: if resource.data.userId == request.auth.uid || isAdmin();
+    }
+    
+    // ReviewResponses collection
+    match /reviewResponses/{responseId} {
+      allow read: if resource.data.status == 'published' || isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.keys().hasAll(['reviewId', 'entityId', 'ownerUserId', 'body', 'status']) &&
+        request.resource.data.ownerUserId == request.auth.uid &&
+        request.resource.data.status == 'published' &&
+        isEntityOwner(request.resource.data.entityId);
+      allow update: if isAuthenticated() && (
+        (resource.data.ownerUserId == request.auth.uid && 
+         !request.resource.data.diff(resource.data).hasAny(['reviewId', 'entityId', 'ownerUserId'])) || // Owners can update their responses
+        isAdmin() // Admins can update anything
+      );
+      allow delete: if resource.data.ownerUserId == request.auth.uid || isAdmin();
+    }
+    
+    // entityOwners collection
+    match /entityOwners/{ownerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin(); // Only admins can create entity ownership records
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ownershipClaims collection
+    match /ownershipClaims/{claimId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || // Users can read their own claims
+        isAdmin() // Admins can read all claims
+      );
+      allow create: if isAuthenticated() && 
+        request.resource.data.keys().hasAll(['entityId', 'userId', 'status', 'evidence']) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        !exists(/databases/$(database)/documents/entityOwners/$(request.auth.uid + '_' + request.resource.data.entityId)); // Can't claim if already owner
+      allow update: if isAdmin(); // Only admins can update claim status
+      allow delete: if isAdmin();
+    }
+    
+    // flags collection (optional)
+    match /flags/{flagId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && 
+        request.resource.data.keys().hasAll(['targetType', 'targetId', 'reportedBy', 'reason', 'status']) &&
+        request.resource.data.reportedBy == request.auth.uid &&
+        request.resource.data.status == 'open';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}
