@@ -1,3 +1,5 @@
+export type EntityType = 'brand' | 'product' | 'movie' | 'music';
+
 export interface User {
   id: string;
   displayName: string;
@@ -12,11 +14,18 @@ export interface Entity {
   id: string;
   name: string;
   description: string;
-  category: 'brand' | 'product' | 'movie' | 'music';
+  type: EntityType;
+  category?: EntityType; // legacy alias
   imageUrl?: string;
   website?: string;
-  averageRating: number;
-  totalReviews: number;
+  ratingAverage: number;
+  ratingCount: number;
+  ratingSum?: number;
+  createdBy?: string;
+  slug?: string;
+  status?: string;
+  lastReviewAt?: Date;
+  metadata?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,13 +36,16 @@ export interface Review {
   userId: string;
   userDisplayName: string;
   rating: number; // 1-5
-  title: string;
-  content: string;
+  title?: string;
+  body: string;
   pros?: string[];
   cons?: string[];
-  wouldRecommend: boolean;
-  verified: boolean;
-  helpfulCount: number;
+  wouldRecommend?: boolean;
+  verified?: boolean;
+  likesCount: number;
+  dislikesCount: number;
+  status: 'published' | 'hidden' | 'flagged';
+  response?: ReviewResponse;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,7 +55,8 @@ export interface ReviewResponse {
   reviewId: string;
   ownerId: string;
   ownerDisplayName: string;
-  content: string;
+  body: string;
+  status: 'published' | 'hidden' | 'flagged';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,10 +77,16 @@ export interface OwnershipClaim {
   userDisplayName: string;
   userEmail: string;
   status: 'pending' | 'approved' | 'rejected';
-  proof: string; // Description of proof provided
+  proof?: string; // Description of proof provided
+  message?: string;
+  evidence?: {
+    website?: string;
+    companyEmail?: string;
+  };
   reviewedBy?: string;
   reviewedAt?: Date;
   rejectionReason?: string;
+  resolvedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

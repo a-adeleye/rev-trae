@@ -34,7 +34,7 @@ interface EntityWithReviews extends Entity {
             <div class="stat-card">
               <div class="stat-icon">🏢</div>
               <div class="stat-content">
-                <div class="stat-number">{{ ownedEntities$ | async | length }}</div>
+                <div class="stat-number">{{ (ownedEntities$ | async)?.length || 0 }}</div>
                 <div class="stat-label">Owned Entities</div>
               </div>
             </div>
@@ -803,7 +803,7 @@ export class OwnerDashboardComponent implements OnInit {
     }
 
     // Check if user is owner
-    if (!this.authService.isOwner) {
+    if (!this.authService.isOwner()) {
       // Redirect to home if not owner
       this.router.navigate(['/']);
       return;
@@ -870,17 +870,12 @@ export class OwnerDashboardComponent implements OnInit {
       return;
     }
 
-    // Mock implementation - would get entity ID from review
-    const mockEntityId = 'entity1';
-    
-    const response = {
+    this.dataService.createReviewResponse({
       reviewId: this.currentReviewId,
-      entityId: mockEntityId,
-      ownerUserId: this.authService.currentUser.id,
+      ownerId: this.authService.currentUser.id,
+      ownerDisplayName: this.authService.currentUser.displayName,
       body: this.responseText.trim()
-    };
-
-    this.dataService.createReviewResponse(response).subscribe(() => {
+    }).subscribe(() => {
       this.closeResponseModal();
     });
   }

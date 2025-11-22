@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Observable, of } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { switchMap, map } from 'rxjs/operators';
 import { Entity } from '@/types/models';
 import { DataService } from '@/services/data.service';
 import { AuthService } from '@/services/auth.service';
@@ -833,6 +833,7 @@ export class WriteReviewComponent implements OnInit {
     const review = {
       entityId: this.selectedEntity.id,
       userId: this.authService.currentUser.id,
+      userDisplayName: this.authService.currentUser.displayName,
       rating: this.rating,
       title: this.reviewTitle.trim() || undefined,
       body: this.reviewBody.trim()

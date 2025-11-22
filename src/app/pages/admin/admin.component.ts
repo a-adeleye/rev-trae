@@ -135,18 +135,18 @@ interface ClaimWithDetails extends OwnershipClaim {
                   <p class="message-text">{{ claim.message }}</p>
                 </div>
                 
-                <div class="claim-evidence" *ngIf="claim.evidence.website || claim.evidence.companyEmail">
+                <div class="claim-evidence" *ngIf="claim.evidence?.website || claim.evidence?.companyEmail">
                   <h4 class="evidence-title">Evidence</h4>
                   <div class="evidence-list">
-                    <div class="evidence-item" *ngIf="claim.evidence.website">
+                    <div class="evidence-item" *ngIf="claim.evidence?.website">
                       <span class="evidence-label">Website:</span>
-                      <a [href]="claim.evidence.website" target="_blank" class="evidence-link">
-                        {{ claim.evidence.website }}
+                      <a [href]="claim.evidence?.website" target="_blank" class="evidence-link">
+                        {{ claim.evidence?.website }}
                       </a>
                     </div>
-                    <div class="evidence-item" *ngIf="claim.evidence.companyEmail">
+                    <div class="evidence-item" *ngIf="claim.evidence?.companyEmail">
                       <span class="evidence-label">Company Email:</span>
-                      <span class="evidence-text">{{ claim.evidence.companyEmail }}</span>
+                      <span class="evidence-text">{{ claim.evidence?.companyEmail }}</span>
                     </div>
                   </div>
                 </div>
@@ -654,7 +654,10 @@ export class AdminComponent implements OnInit {
       {
         id: 'claim1',
         entityId: 'entity5',
+        entityName: 'Nike',
         userId: 'user4',
+        userDisplayName: 'Bob Johnson',
+        userEmail: 'bob@example.com',
         status: 'pending',
         message: 'I am the marketing manager for Nike and would like to manage reviews for our brand.',
         evidence: {
@@ -662,6 +665,7 @@ export class AdminComponent implements OnInit {
           companyEmail: 'marketing@nike.com'
         },
         createdAt: new Date('2024-11-12'),
+        updatedAt: new Date('2024-11-12'),
         resolvedAt: undefined,
         entity: {
           id: 'entity5',
@@ -684,7 +688,8 @@ export class AdminComponent implements OnInit {
           displayName: 'Bob Johnson',
           email: 'bob@example.com',
           role: 'regular',
-          createdAt: new Date('2024-01-04')
+          createdAt: new Date('2024-01-04'),
+          updatedAt: new Date('2024-01-04')
         }
       }
     ];
@@ -706,7 +711,7 @@ export class AdminComponent implements OnInit {
     }
 
     // Check if user is admin
-    if (!this.authService.isAdmin) {
+    if (!this.authService.isAdmin()) {
       // Redirect to home if not admin
       this.router.navigate(['/']);
       return;

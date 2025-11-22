@@ -1,17 +1,13 @@
 import { Injectable } from '@angular/core';
 import { Observable, of, BehaviorSubject } from 'rxjs';
-import { delay, map } from 'rxjs/operators';
+import { delay } from 'rxjs/operators';
 import {
   Entity,
   Review,
   ReviewResponse,
   OwnershipClaim,
   Flag,
-  SearchFilters,
-  PaginatedResponse,
-  ReviewFormData,
-  ClaimFormData,
-  FlagFormData
+  SearchFilters
 } from '../mock';
 import {
   mockEntities,
@@ -62,11 +58,13 @@ export class DataService {
     let entities = [...this.entitiesSubject.value];
 
     if (filters?.category && filters.category !== 'all') {
-      entities = entities.filter(entity => entity.category === filters.category);
+      entities = entities.filter(entity => 
+        entity.category === filters.category || entity.type === filters.category
+      );
     }
 
     if (filters?.minRating) {
-      entities = entities.filter(entity => entity.averageRating >= filters.minRating!);
+      entities = entities.filter(entity => entity.ratingAverage >= filters.minRating!);
     }
 
     // Sorting
@@ -80,16 +78,16 @@ export class DataService {
             bValue = b.name.toLowerCase();
             break;
           case 'rating':
-            aValue = a.averageRating;
-            bValue = b.averageRating;
+            aValue = a.ratingAverage;
+            bValue = b.ratingAverage;
             break;
           case 'newest':
             aValue = a.createdAt.getTime();
             bValue = b.createdAt.getTime();
             break;
           case 'most-reviewed':
-            aValue = a.totalReviews;
-            bValue = b.totalReviews;
+            aValue = a.ratingCount;
+            bValue = b.ratingCount;
             break;
           default:
             return 0;
@@ -110,6 +108,10 @@ export class DataService {
     return of(entity).pipe(delay(200));
   }
 
+  getEntityById(id: string): Observable<Entity | undefined> {
+    return this.getEntity(id);
+  }
+
   searchEntities(query: string, category?: string): Observable<Entity[]> {
     const results = searchEntities(query, category);
     return of(results).pipe(delay(400));
@@ -123,6 +125,37 @@ export class DataService {
   getMostReviewedEntities(limit: number = 6): Observable<Entity[]> {
     const entities = getMostReviewedEntities(limit);
     return of(entities).pipe(delay(250));
+  }
+
+  createEntity(entityData: {
+    type: Entity['type'];
+    name: string;
+    slug?: string;
+    description?: string;
+    createdBy?: string;
+    status?: string;
+    metadata?: Record<string, unknown>;
+  }): Observable<Entity> {
+    const now = new Date();
+    const newEntity: Entity = {
+      id: `entity-${Date.now()}`,
+      name: entityData.name,
+      description: entityData.description || '',
+      type: entityData.type,
+      category: entityData.type,
+      slug: entityData.slug,
+      createdBy: entityData.createdBy,
+      status: entityData.status || 'active',
+      metadata: entityData.metadata || {},
+      ratingAverage: 0,
+      ratingCount: 0,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    const current = this.entitiesSubject.value;
+    this.entitiesSubject.next([...current, newEntity]);
+    return of(newEntity).pipe(delay(300));
   }
 
   // Review methods
@@ -141,20 +174,32 @@ export class DataService {
     return of(reviews).pipe(delay(200));
   }
 
-  createReview(reviewData: ReviewFormData, entityId: string, userId: string, userDisplayName: string): Observable<Review> {
+  createReview(reviewData: {
+    entityId: string;
+    userId: string;
+    userDisplayName?: string;
+    rating: number;
+    title?: string;
+    body: string;
+    pros?: string[];
+    cons?: string[];
+    wouldRecommend?: boolean;
+  }): Observable<Review> {
     const newReview: Review = {
       id: `review-${Date.now()}`,
-      entityId,
-      userId,
-      userDisplayName,
+      entityId: reviewData.entityId,
+      userId: reviewData.userId,
+      userDisplayName: reviewData.userDisplayName || 'Anonymous',
       rating: reviewData.rating,
       title: reviewData.title,
-      content: reviewData.content,
+      body: reviewData.body,
       pros: reviewData.pros,
       cons: reviewData.cons,
       wouldRecommend: reviewData.wouldRecommend,
       verified: false, // New reviews are not verified by default
-      helpfulCount: 0,
+      likesCount: 0,
+      dislikesCount: 0,
+      status: 'published',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -163,7 +208,7 @@ export class DataService {
     this.reviewsSubject.next([...currentReviews, newReview]);
 
     // Update entity review count and average rating
-    this.updateEntityReviewStats(entityId);
+    this.updateEntityReviewStats(reviewData.entityId);
 
     return of(newReview).pipe(delay(500));
   }
@@ -175,7 +220,7 @@ export class DataService {
     const currentReviews = this.reviewsSubject.value;
     const review = currentReviews.find(r => r.id === reviewId);
     if (review) {
-      review.helpfulCount += 1;
+      review.likesCount += 1;
       this.reviewsSubject.next([...currentReviews]);
     }
 
@@ -188,8 +233,13 @@ export class DataService {
     return of(response).pipe(delay(200));
   }
 
-  createReviewResponse(reviewId: string, ownerId: string, ownerDisplayName: string, content: string): Observable<ReviewResponse> {
-    const newResponse = createResponse(reviewId, ownerId, ownerDisplayName, content);
+  createReviewResponse(responseData: { reviewId: string; ownerId: string; ownerDisplayName: string; body: string }): Observable<ReviewResponse> {
+    const newResponse = createResponse(
+      responseData.reviewId,
+      responseData.ownerId,
+      responseData.ownerDisplayName,
+      responseData.body
+    );
     
     const currentResponses = this.reviewResponsesSubject.value;
     this.reviewResponsesSubject.next([...currentResponses, newResponse]);
@@ -316,10 +366,11 @@ export class DataService {
     const entity = getEntityById(entityId);
     
     if (entity) {
-      entity.totalReviews = reviews.length;
-      entity.averageRating = reviews.length > 0 
+      entity.ratingCount = reviews.length;
+      entity.ratingAverage = reviews.length > 0 
         ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
         : 0;
+      entity.lastReviewAt = reviews.length ? reviews[0].createdAt : undefined;
       entity.updatedAt = new Date();
       
       // Update the entities subject

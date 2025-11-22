@@ -152,7 +152,7 @@ interface ReviewWithResponse extends Review {
     </div>
 
     <!-- Claim Modal -->
-    <div class="modal-overlay" *ngIf="showClaimModal" (click)="showClaimModal = false">
+    <div class="modal-overlay" *ngIf="showClaimModal && (entity$ | async) as entity" (click)="showClaimModal = false">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h3 class="modal-title">Claim {{ entity.name }}</h3>

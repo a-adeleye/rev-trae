@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
-import { Entity } from '@/types/models';
+import { map } from 'rxjs/operators';
+import { Entity, EntityType } from '@/types/models';
 import { DataService } from '@/services/data.service';
 import { AuthService } from '@/services/auth.service';
 

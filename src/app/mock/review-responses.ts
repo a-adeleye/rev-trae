@@ -7,7 +7,8 @@ export const mockReviewResponses: ReviewResponse[] = [
     reviewId: 'review-1',
     ownerId: 'user-2',
     ownerDisplayName: 'Jane Smith',
-    content: 'Thank you so much for your wonderful review, John! We are thrilled to hear that you love our products and have been a loyal customer. Your feedback about our innovation means a lot to us. We will continue to strive for excellence in both design and performance.',
+    body: 'Thank you so much for your wonderful review, John! We are thrilled to hear that you love our products and have been a loyal customer. Your feedback about our innovation means a lot to us. We will continue to strive for excellence in both design and performance.',
+    status: 'published',
     createdAt: new Date('2023-06-16'),
     updatedAt: new Date('2023-06-16')
   },
@@ -16,7 +17,8 @@ export const mockReviewResponses: ReviewResponse[] = [
     reviewId: 'review-2',
     ownerId: 'user-2',
     ownerDisplayName: 'Jane Smith',
-    content: 'Hi Sarah, thank you for taking the time to share your feedback. We appreciate your honest assessment of our products. We are constantly working to improve our customer service experience and your comments have been shared with our team. We hope to exceed your expectations in the future.',
+    body: 'Hi Sarah, thank you for taking the time to share your feedback. We appreciate your honest assessment of our products. We are constantly working to improve our customer service experience and your comments have been shared with our team. We hope to exceed your expectations in the future.',
+    status: 'published',
     createdAt: new Date('2023-07-21'),
     updatedAt: new Date('2023-07-21')
   },
@@ -27,7 +29,8 @@ export const mockReviewResponses: ReviewResponse[] = [
     reviewId: 'review-3',
     ownerId: 'user-5',
     ownerDisplayName: 'David Brown',
-    content: 'Sarah, we are incredibly grateful for your kind words! It is wonderful to hear that you appreciate the seamless ecosystem and build quality of our products. Your satisfaction is our top priority, and we are committed to continuing to deliver innovative technology that enhances your daily life.',
+    body: 'Sarah, we are incredibly grateful for your kind words! It is wonderful to hear that you appreciate the seamless ecosystem and build quality of our products. Your satisfaction is our top priority, and we are committed to continuing to deliver innovative technology that enhances your daily life.',
+    status: 'published',
     createdAt: new Date('2023-05-11'),
     updatedAt: new Date('2023-05-11')
   },
@@ -36,7 +39,8 @@ export const mockReviewResponses: ReviewResponse[] = [
     reviewId: 'review-4',
     ownerId: 'user-5',
     ownerDisplayName: 'David Brown',
-    content: 'Lisa, thank you for sharing your perspective. We understand that our products represent a significant investment, and we respect that they may not be the right fit for everyone. We focus on delivering premium quality and integrated experiences that we believe justify the value proposition.',
+    body: 'Lisa, thank you for sharing your perspective. We understand that our products represent a significant investment, and we respect that they may not be the right fit for everyone. We focus on delivering premium quality and integrated experiences that we believe justify the value proposition.',
+    status: 'published',
     createdAt: new Date('2023-08-06'),
     updatedAt: new Date('2023-08-06')
   },
@@ -47,7 +51,8 @@ export const mockReviewResponses: ReviewResponse[] = [
     reviewId: 'review-7',
     ownerId: 'user-5',
     ownerDisplayName: 'David Brown',
-    content: 'Lisa, we are absolutely delighted to hear that you are enjoying your WH-1000XM5 headphones! Your praise for the noise canceling and sound quality means the world to us. We designed these headphones with comfort and performance in mind, and it is fantastic to know they are meeting your expectations.',
+    body: 'Lisa, we are absolutely delighted to hear that you are enjoying your WH-1000XM5 headphones! Your praise for the noise canceling and sound quality means the world to us. We designed these headphones with comfort and performance in mind, and it is fantastic to know they are meeting your expectations.',
+    status: 'published',
     createdAt: new Date('2023-07-16'),
     updatedAt: new Date('2023-07-16')
   },
@@ -58,7 +63,8 @@ export const mockReviewResponses: ReviewResponse[] = [
     reviewId: 'review-8',
     ownerId: 'user-5',
     ownerDisplayName: 'David Brown',
-    content: 'Sarah, your glowing review of the MacBook Air with M2 has made our day! We are thrilled that you are experiencing the incredible performance and battery life that the M2 chip delivers. Your feedback reinforces our commitment to creating products that empower creativity and productivity.',
+    body: 'Sarah, your glowing review of the MacBook Air with M2 has made our day! We are thrilled that you are experiencing the incredible performance and battery life that the M2 chip delivers. Your feedback reinforces our commitment to creating products that empower creativity and productivity.',
+    status: 'published',
     createdAt: new Date('2023-06-02'),
     updatedAt: new Date('2023-06-02')
   }
@@ -76,14 +82,15 @@ export const createReviewResponse = (
   reviewId: string,
   ownerId: string,
   ownerDisplayName: string,
-  content: string
+  body: string
 ): ReviewResponse => {
   const newResponse: ReviewResponse = {
     id: `response-${Date.now()}`,
     reviewId,
     ownerId,
     ownerDisplayName,
-    content,
+    body,
+    status: 'published',
     createdAt: new Date(),
     updatedAt: new Date()
   };

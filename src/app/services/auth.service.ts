@@ -9,6 +9,14 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
 
+  get currentUser(): User | null {
+    return this.currentUserSubject.value;
+  }
+
+  get isLoggedIn(): boolean {
+    return this.isAuthenticated();
+  }
+
   constructor() {
     // Initialize with a mock user for Phase 1 testing
     this.initializeMockUser();
@@ -51,6 +59,10 @@ export class AuthService {
     this.currentUserSubject.next(null);
   }
 
+  async logout(): Promise<void> {
+    return this.signOut();
+  }
+
   // Test method to switch between mock users
   switchMockUser(userId: string): void {
     const user = getUserById(userId);
@@ -66,6 +78,21 @@ export class AuthService {
     if (user) {
       this.currentUserSubject.next(user);
     }
+  }
+
+  loginAsRegularUser(): void {
+    const user = mockUsers.find(u => u.role === 'regular') || mockUsers[0];
+    this.currentUserSubject.next(user);
+  }
+
+  loginAsOwner(): void {
+    const user = mockUsers.find(u => u.role === 'owner') || mockUsers[0];
+    this.currentUserSubject.next(user);
+  }
+
+  loginAsAdmin(): void {
+    const user = mockUsers.find(u => u.role === 'admin') || mockUsers[0];
+    this.currentUserSubject.next(user);
   }
 
   getCurrentUser(): User | null {
@@ -116,5 +143,9 @@ export class AuthService {
   // Simulate password reset
   async sendPasswordResetEmail(email: string): Promise<void> {
     console.log(`Mock: Password reset email sent to ${email}`);
+  }
+
+  async sendSignInLinkToEmail(email: string): Promise<void> {
+    return this.signInWithEmailLink(email);
   }
 }
