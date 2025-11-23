@@ -9,7 +9,7 @@ import { NavigationComponent } from '@/components/navigation/navigation.componen
   imports: [CommonModule, RouterOutlet, NavigationComponent],
   template: `
     <div class="app-container">
-      <app-navigation></app-navigation>
+<!--      <app-navigation></app-navigation>-->
       <main class="main-content">
         <router-outlet></router-outlet>
       </main>
